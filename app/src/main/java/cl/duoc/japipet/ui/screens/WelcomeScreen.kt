@@ -18,7 +18,10 @@ fun WelcomeScreen(
         mutableStateOf(UserRole.CLIENT)
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    )
+    { innerPadding ->
 
         Column(
             modifier = Modifier
