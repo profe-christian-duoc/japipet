@@ -5,10 +5,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-
+import androidx.navigation.compose.*
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import cl.duoc.japipet.model.UserRole
 import cl.duoc.japipet.ui.screens.AdminHomeScreen
 import cl.duoc.japipet.ui.screens.ClientHomeScreen
@@ -24,9 +22,9 @@ import cl.duoc.japipet.ui.screens.MascotaFormScreen
 @Composable
 fun AppNavigation() {
 
-    val mascotaViewModel: MascotaViewModel = viewModel()
-    val mascotas by mascotaViewModel.mascotas.collectAsStateWithLifecycle()
+    val mascotaViewModel: MascotaViewModel = hiltViewModel()
     val navController = rememberNavController()
+    val mascotas by mascotaViewModel.mascotas.collectAsStateWithLifecycle()
     val clientes by mascotaViewModel.clientes.collectAsStateWithLifecycle()
 
     Box(
@@ -112,18 +110,21 @@ fun AppNavigation() {
                                edad,
                                observaciones ->
 
-                        val guardado = mascotaViewModel.agregarMascota(
+
+                        mascotaViewModel.agregarMascota(
                             clienteId = clienteId,
                             nombre = nombre,
                             especie = especie,
                             raza = raza,
                             edad = edad,
-                            observaciones = observaciones
+                            observaciones = observaciones,
+                            onResult = { guardado ->
+                                if (guardado) {
+                                    navController.popBackStack()
+                                }
+                            }
                         )
 
-                        if (guardado) {
-                            navController.popBackStack()
-                        }
                     },
                     onCancel = {
                         navController.popBackStack()
@@ -151,21 +152,21 @@ fun AppNavigation() {
                                    edad,
                                    observaciones ->
 
-                            val actualizado =
-                                mascotaViewModel.actualizarMascota(
-                                    mascota.copy(
-                                        clienteId = clienteId,
-                                        nombre = nombre,
-                                        especie = especie,
-                                        raza = raza,
-                                        edad = edad,
-                                        observaciones = observaciones
-                                    )
-                                )
-
-                            if (actualizado) {
-                                navController.popBackStack()
-                            }
+                            mascotaViewModel.actualizarMascota(
+                                mascota = mascota.copy(
+                                    clienteId = clienteId,
+                                    nombre = nombre,
+                                    especie = especie,
+                                    raza = raza,
+                                    edad = edad,
+                                    observaciones = observaciones
+                                ),
+                                onResult = { actualizado ->
+                                    if (actualizado) {
+                                        navController.popBackStack()
+                                    }
+                                }
+                            )
                         },
                         onCancel = {
                             navController.popBackStack()

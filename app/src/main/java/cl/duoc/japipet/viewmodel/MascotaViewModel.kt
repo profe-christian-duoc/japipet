@@ -1,34 +1,38 @@
-
 package cl.duoc.japipet.viewmodel
 
 import androidx.lifecycle.ViewModel
-import cl.duoc.japipet.model.Cliente
-import cl.duoc.japipet.model.ClientesEjemplo
+import androidx.lifecycle.viewModelScope
+import cl.duoc.japipet.data.repository.ClienteRepository
+import cl.duoc.japipet.data.repository.MascotaRepository
 import cl.duoc.japipet.model.Mascota
-import cl.duoc.japipet.model.MascotasEjemplo
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class MascotaViewModel : ViewModel() {
+@HiltViewModel
+class MascotaViewModel @Inject constructor(
+    private val mascotaRepository: MascotaRepository,
+    private val clienteRepository: ClienteRepository
+) : ViewModel() {
 
-    private val _clientes = MutableStateFlow(
-        ClientesEjemplo.clientes
+    val clientes = mascotaRepository.clientes.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
     )
 
-    val clientes: StateFlow<List<Cliente>> =
-        _clientes.asStateFlow()
-
-    private val _mascotas = MutableStateFlow(
-        MascotasEjemplo.mascotas
+    val mascotas = mascotaRepository.mascotas.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
     )
 
-    val mascotas: StateFlow<List<Mascota>> =
-        _mascotas.asStateFlow()
-
-    fun obtenerMascota(id: Int): Mascota? {
-        return _mascotas.value.find { it.id == id }
+    init {
+        viewModelScope.launch {
+            clienteRepository.prepararClientesIniciales()
+        }
     }
 
     fun agregarMascota(
@@ -37,61 +41,36 @@ class MascotaViewModel : ViewModel() {
         especie: String,
         raza: String,
         edad: Int,
-        observaciones: String
-    ): Boolean {
-        if (!clienteExiste(clienteId)) return false
-
-        val nuevoId =
-            (_mascotas.value.maxOfOrNull { it.id } ?: 0) + 1
-
-        val nuevaMascota = Mascota(
-            id = nuevoId,
-            clienteId = clienteId,
-            nombre = nombre.trim(),
-            especie = especie,
-            raza = raza.trim(),
-            edad = edad,
-            observaciones = observaciones.trim()
-        )
-
-        _mascotas.update { lista ->
-            lista + nuevaMascota
+        observaciones: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val resultado = mascotaRepository.agregarMascota(
+                clienteId = clienteId,
+                nombre = nombre,
+                especie = especie,
+                raza = raza,
+                edad = edad,
+                observaciones = observaciones
+            )
+            onResult(resultado)
         }
-
-        return true
     }
 
     fun actualizarMascota(
-        mascotaActualizada: Mascota
-    ): Boolean {
-        if (!clienteExiste(mascotaActualizada.clienteId)) {
-            return false
+        mascota: Mascota,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val resultado =
+                mascotaRepository.actualizarMascota(mascota)
+            onResult(resultado)
         }
-
-        if (obtenerMascota(mascotaActualizada.id) == null) {
-            return false
-        }
-
-        _mascotas.update { lista ->
-            lista.map { mascota ->
-                if (mascota.id == mascotaActualizada.id) {
-                    mascotaActualizada
-                } else {
-                    mascota
-                }
-            }
-        }
-
-        return true
     }
 
     fun eliminarMascota(id: Int) {
-        _mascotas.update { lista ->
-            lista.filterNot { it.id == id }
+        viewModelScope.launch {
+            mascotaRepository.eliminarMascota(id)
         }
-    }
-
-    private fun clienteExiste(clienteId: Int): Boolean {
-        return _clientes.value.any { it.id == clienteId }
     }
 }
