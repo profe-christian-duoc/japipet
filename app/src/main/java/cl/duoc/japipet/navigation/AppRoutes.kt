@@ -20,4 +20,9 @@ object AppRoutes {
     fun petEdit(mascotaId: Int): String {
         return "pet_edit/$mascotaId"
     }
+
+    const val CLIENT_FORM = "client_form"
+    const val CLIENT_EDIT = "client_edit/{clienteId}"
+
+    fun clientEdit(id: Int): String = "client_edit/$id"
 }
